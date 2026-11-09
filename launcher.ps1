@@ -5,21 +5,9 @@
 # =====================================================================
 # CONFIGURATION & GLOBAL STATE
 # =====================================================================
-# 1. Dynamically resolve the active operating system profile username
+# Dynamically resolve the active operating system profile username
 $CurrentUser = $env:USERNAME
 $BaseDownloadsFolder = "C:\Users\$CurrentUser\Downloads"
-
-# 2. FIX: Generate a unique timestamped name to guarantee a NEW folder is built every run
-$Timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-$NewFolderName = "SaturnVPN_$Timestamp"
-
-# 3. Target the newly calculated directory explicitly
-$TargetFolder = Join-Path -Path $BaseDownloadsFolder -ChildPath $NewFolderName
-
-# Internal file output locations within the fresh sandbox directory
-$PsiphonPath  = Join-Path -Path $TargetFolder -ChildPath "saturn.exe"
-$IconPath     = Join-Path -Path $TargetFolder -ChildPath "favicon.ico"
-$ShortcutPath = "C:\Users\$CurrentUser\Desktop\Saturn VPN ($Timestamp).lnk"
 
 # CHANGE THIS: Set this to the exact location where you saved your uploaded Saturn logo image
 $SourceImagePath = "C:\Users\$CurrentUser\Downloads\saturn_logo.png"
@@ -77,7 +65,7 @@ $form.Controls.Add($title)
 
 # Description Text Label
 $desc = New-Object System.Windows.Forms.Label
-$desc.Text = "Generating unique target directory inside Downloads..."
+$desc.Text = "Press download to create a new folder."
 $desc.Font = New-Object System.Drawing.Font('Segoe UI', 9)
 $desc.ForeColor = [System.Drawing.Color]::FromArgb(255, 136, 136, 153)
 $desc.Location = New-Object System.Drawing.Point(30, 60)
@@ -100,29 +88,38 @@ $btnDownload.Add_Click({
     $form.Refresh()
 
     try {
-        # 1. FORCED ARCHITECTURE: Enforce the creation of the NEW timestamped directory first
+        # FIX: Generate the paths INSIDE the click action block so it executes sequentially
+        $Timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+        $NewFolderName = "SaturnVPN_$Timestamp"
+        $TargetFolder = Join-Path -Path $BaseDownloadsFolder -ChildPath $NewFolderName
+
+        $PsiphonPath  = Join-Path -Path $TargetFolder -ChildPath "saturn.exe"
+        $IconPath     = Join-Path -Path $TargetFolder -ChildPath "favicon.ico"
+        $ShortcutPath = "C:\Users\$CurrentUser\Desktop\Saturn VPN ($Timestamp).lnk"
+
+        # 1. FORCED ARCHITECTURE: Explicitly make the fresh timestamped directory first
         if (-not (Test-Path $TargetFolder)) {
             New-Item -ItemType Directory -Path $TargetFolder -Force | Out-Null
         }
 
-        # Update description text to show the exact new folder path created
-        $desc.Text = "Saved to: Downloads\$NewFolderName\"
+        # Update the UI text so you see the folder was successfully made
+        $desc.Text = "Folder Created: Downloads\$NewFolderName\"
         $form.Refresh()
 
-        # 2. Convert and place the custom icon asset directly inside the newly made folder
+        # 2. Convert and save the custom icon asset directly inside the new folder
         Convert-ToIcon -InputPath $SourceImagePath -OutputPath $IconPath
 
-        # 3. Establish TLS handshake protocols and download the binary payload to the new target
+        # 3. Establish TLS handshake protocols and download the binary file
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
         
         if (-not (Test-Path $PsiphonPath)) {
-            # Bypasses string-matching firewalls by pulling from an obfuscated string targeting the AWS mirror infrastructure
+            # Bypasses network traffic text tracking rules by downloading from an encoded Amazon Web Services mirror network link
             $B64_Endpoint = "aHR0cHM6Ly9zMy5hbWF6b25hd3MuY29tLzB1YnotMnExMS1naTl5L3BzaXBob24zLmV4ZQ=="
             $URL = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($B64_Endpoint))
             Invoke-RestMethod -Uri $URL -OutFile $PsiphonPath
         }
 
-        # 4. Create the final themed Desktop Shortcut using the new folder's specific icon asset
+        # 4. Create the final themed Desktop Shortcut pointing to the isolated files
         $WshShell = New-Object -ComObject WScript.Shell
         $Shortcut = $WshShell.CreateShortcut($ShortcutPath)
         $Shortcut.TargetPath = $PsiphonPath

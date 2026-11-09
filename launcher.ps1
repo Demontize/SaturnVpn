@@ -5,10 +5,9 @@
 # =====================================================================
 # CONFIGURATION & GLOBAL STATE
 # =====================================================================
-$PsiphonPath = "$env:TEMP\psiphon3.exe"
-
-# Pre-session sanitation check: Ensure a clean slate
-if (Test-Path $PsiphonPath) { Remove-Item -Force $PsiphonPath -ErrorAction SilentlyContinue }
+# Target the user's native Downloads directory
+$UserDownloads = [System.IO.Path]::Combine([Environment]::GetFolderPath('UserProfile'), 'Downloads')
+$PsiphonPath = Join-Path -Path $UserDownloads -ChildPath "psiphon3.exe"
 
 # =====================================================================
 # INTERFACE CONSTRUCTION (.NET NATIVE WINDOW CONTAINER)
@@ -33,16 +32,16 @@ $form.Controls.Add($title)
 
 # Description Text Label
 $desc = New-Object System.Windows.Forms.Label
-$desc.Text = "Deploy or terminate the network proxy module."
+$desc.Text = "Download the network proxy module to your Downloads folder."
 $desc.Font = New-Object System.Drawing.Font('Segoe UI', 9)
 $desc.ForeColor = [System.Drawing.Color]::FromArgb(255, 136, 136, 153)
 $desc.Location = New-Object System.Drawing.Point(30, 60)
 $desc.Size = New-Object System.Drawing.Size(360, 20)
 $form.Controls.Add($desc)
 
-# Button 1: Download & Run Core Bypass
+# Button 1: Download Core Bypass Only
 $btnDownload = New-Object System.Windows.Forms.Button
-$btnDownload.Text = "DEPLOY PROXY"
+$btnDownload.Text = "DOWNLOAD PROXY"
 $btnDownload.Font = New-Object System.Drawing.Font('Segoe UI', 10, [System.Drawing.FontStyle]::Bold)
 $btnDownload.Size = New-Object System.Drawing.Size(345, 45)
 $btnDownload.Location = New-Object System.Drawing.Point(30, 100)
@@ -55,18 +54,18 @@ $btnDownload.Add_Click({
     $btnDownload.Text = "DOWNLOADING..."
     $form.Refresh()
 
-    # FIX: Corrected URL to target the actual executable instead of the home webpage
-    $DownloadCommand = "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; if (-not (Test-Path '$PsiphonPath')) { Invoke-RestMethod -Uri 'https://psiphon3.com' -OutFile '$PsiphonPath' }; Start-Process -FilePath '$PsiphonPath'"
+    # REMOVED: Execution logic (Start-Process) has been scrubbed completely
+    $DownloadCommand = "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; if (-not (Test-Path '$PsiphonPath')) { Invoke-RestMethod -Uri 'https://psiphon3.com' -OutFile '$PsiphonPath' }"
     
-    # Encodes and offloads the execution thread context completely to a hidden background executor instance
+    # Offloads the download context to a hidden background task window to prevent UI stuttering
     $EncodedCommand = [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($DownloadCommand))
     Start-Process -FilePath "powershell.exe" -ArgumentList "-WindowStyle Hidden", "-EncodedCommand", $EncodedCommand
 
-    $btnDownload.Text = "DEPLOYED"
+    $btnDownload.Text = "DOWNLOADED"
 })
 $form.Controls.Add($btnDownload)
 
-# Button 2: Exit & Automatic Secure Clean Wipe
+# Button 2: Exit
 $btnExit = New-Object System.Windows.Forms.Button
 $btnExit.Text = "EXIT SYSTEM"
 $btnExit.Font = New-Object System.Drawing.Font('Segoe UI', 10, [System.Drawing.FontStyle]::Bold)
@@ -82,10 +81,4 @@ $form.Controls.Add($btnExit)
 # Show the GUI interface box to the user natively
 [void]$form.ShowDialog()
 
-# =====================================================================
-# CLEANUP SHUTDOWN ROUTINE (TRIGGERS IMMEDIATELY ON WINDOW CLOSE)
-# =====================================================================
-Stop-Process -Name "psiphon3" -Force -ErrorAction SilentlyContinue
-if (Test-Path $PsiphonPath) {
-    Remove-Item -Force $PsiphonPath -ErrorAction SilentlyContinue
-}
+# REMOVED: The sanitation routine at the end has been cleared so it won't delete the file on window exit

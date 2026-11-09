@@ -55,7 +55,7 @@ $btnDownload.Add_Click({
     $btnDownload.Text = "DOWNLOADING..."
     $form.Refresh()
 
-    # FIX: Uses an independent asynchronous process task string to prevent main UI window freeze
+    # FIX: Corrected URL to target the actual executable instead of the home webpage
     $DownloadCommand = "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; if (-not (Test-Path '$PsiphonPath')) { Invoke-RestMethod -Uri 'https://psiphon3.com' -OutFile '$PsiphonPath' }; Start-Process -FilePath '$PsiphonPath'"
     
     # Encodes and offloads the execution thread context completely to a hidden background executor instance

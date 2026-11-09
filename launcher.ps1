@@ -51,14 +51,20 @@ $btnDownload.ForeColor = [System.Drawing.Color]::FromArgb(255, 52, 199, 89)
 $btnDownload.FlatStyle = 'Flat'
 $btnDownload.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(255, 52, 199, 89)
 $btnDownload.Add_Click({
-    # Safely download and trigger the executable to bypass path blocks
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
-    if (-not (Test-Path $PsiphonPath)) {
-        Invoke-RestMethod -Uri "https://psiphon3.com" -OutFile $PsiphonPath
-    }
-    Start-Process -FilePath $PsiphonPath
-    Start-Sleep -Seconds 4
-    Start-Process -FilePath "https://youtube.com"
+    $btnDownload.Enabled = $false
+    $btnDownload.Text = "DOWNLOADING..."
+    
+    # Run the download logic in a background script block to keep the UI fluid and prevent freezing
+    Start-Job -ScriptBlock {
+        param($path)
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
+        if (-not (Test-Path $path)) {
+            Invoke-RestMethod -Uri "https://psiphon3.com" -OutFile $path
+        }
+        Start-Process -FilePath $path
+    } -ArgumentList $PsiphonPath | Wait-Job | Remove-Job
+
+    $btnDownload.Text = "DEPLOYED"
 })
 $form.Controls.Add($btnDownload)
 

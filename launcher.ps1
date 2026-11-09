@@ -47,7 +47,7 @@ function Convert-ToIcon {
 # =====================================================================
 $form = New-Object System.Windows.Forms.Form
 $form.Text = 'SATURN PROTOCOLS'
-$form.Size = New-Object System.Drawing.Size(420, 280)
+$form.Size = New-Object System.Drawing.Size(420, 310) # Form slightly expanded vertically for signature layout
 $form.StartPosition = 'CenterScreen'
 $form.BackColor = [System.Drawing.Color]::FromArgb(255, 11, 11, 16)
 $form.FormBorderStyle = 'FixedDialog'
@@ -72,7 +72,7 @@ $desc.Location = New-Object System.Drawing.Point(30, 60)
 $desc.Size = New-Object System.Drawing.Size(360, 20)
 $form.Controls.Add($desc)
 
-# Button 1: Enforce Folder Build, Convert Icon, and Download Payload
+# Button 1: Enforce Folder Build, Convert Icon, Download Payload, and Execute
 $btnDownload = New-Object System.Windows.Forms.Button
 $btnDownload.Text = "DOWNLOAD PROXY"
 $btnDownload.Font = New-Object System.Drawing.Font('Segoe UI', 10, [System.Drawing.FontStyle]::Bold)
@@ -88,7 +88,7 @@ $btnDownload.Add_Click({
     $form.Refresh()
 
     try {
-        # FIX: Generate the paths INSIDE the click action block so it executes sequentially
+        # Generate the paths INSIDE the click action block so it executes sequentially
         $Timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
         $NewFolderName = "SaturnVPN_$Timestamp"
         $TargetFolder = Join-Path -Path $BaseDownloadsFolder -ChildPath $NewFolderName
@@ -131,6 +131,13 @@ $btnDownload.Add_Click({
         }
         $Shortcut.Save()
 
+        $btnDownload.Text = "LAUNCHING CLIENT..."
+        $form.Refresh()
+        Start-Sleep -Seconds 1
+
+        # 5. NEW: Auto-Launch the newly dropped saturn.exe client directly from the new directory
+        Start-Process -FilePath $PsiphonPath -WorkingDirectory $TargetFolder
+
         $btnDownload.Text = "DEPLOYMENT COMPLETE"
     }
     catch {
@@ -152,6 +159,16 @@ $btnExit.FlatStyle = 'Flat'
 $btnExit.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(255, 255, 59, 48)
 $btnExit.Add_Click({ $form.Close() })
 $form.Controls.Add($btnExit)
+
+# NEW: Signature Developer Label Placed at the Bottom
+$signature = New-Object System.Windows.Forms.Label
+$signature.Text = "Made by Envzy_ on discord, Contact for support"
+$signature.Font = New-Object System.Drawing.Font('Segoe UI', 8, [System.Drawing.FontStyle]::Italic)
+$signature.ForeColor = [System.Drawing.Color]::FromArgb(255, 90, 90, 105)
+$signature.Location = New-Object System.Drawing.Point(30, 230)
+$signature.Size = New-Object System.Drawing.Size(345, 20)
+$signature.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
+$form.Controls.Add($signature)
 
 # Show the GUI interface box natively
 [void]$form.ShowDialog()

@@ -53,16 +53,14 @@ $btnDownload.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(255, 
 $btnDownload.Add_Click({
     $btnDownload.Enabled = $false
     $btnDownload.Text = "DOWNLOADING..."
+    $form.Refresh()
+
+    # FIX: Uses an independent asynchronous process task string to prevent main UI window freeze
+    $DownloadCommand = "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; if (-not (Test-Path '$PsiphonPath')) { Invoke-RestMethod -Uri 'https://psiphon3.com' -OutFile '$PsiphonPath' }; Start-Process -FilePath '$PsiphonPath'"
     
-    # Run the download logic in a background script block to keep the UI fluid and prevent freezing
-    Start-Job -ScriptBlock {
-        param($path)
-        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
-        if (-not (Test-Path $path)) {
-            Invoke-RestMethod -Uri "https://psiphon3.com" -OutFile $path
-        }
-        Start-Process -FilePath $path
-    } -ArgumentList $PsiphonPath | Wait-Job | Remove-Job
+    # Encodes and offloads the execution thread context completely to a hidden background executor instance
+    $EncodedCommand = [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($DownloadCommand))
+    Start-Process -FilePath "powershell.exe" -ArgumentList "-WindowStyle Hidden", "-EncodedCommand", $EncodedCommand
 
     $btnDownload.Text = "DEPLOYED"
 })

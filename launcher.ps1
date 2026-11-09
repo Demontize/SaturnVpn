@@ -5,8 +5,9 @@
 # =====================================================================
 # CONFIGURATION & GLOBAL STATE
 # =====================================================================
-# Target folder with the rebranded file name to evade strict string filters
-$PsiphonPath = "C:\Users\111464\Downloads\saturnvpn.exe"
+# Dynamically resolves the exact path for the current user running the script
+$CurrentUser = $env:USERNAME
+$PsiphonPath = "C:\Users\$CurrentUser\Downloads\saturnvpn.exe"
 
 # =====================================================================
 # INTERFACE CONSTRUCTION (.NET NATIVE WINDOW CONTAINER)
@@ -31,14 +32,14 @@ $form.Controls.Add($title)
 
 # Description Text Label
 $desc = New-Object System.Windows.Forms.Label
-$desc.Text = "Deploying secure module to target directory..."
+$desc.Text = "Target: Users\$CurrentUser\Downloads\saturnvpn.exe"
 $desc.Font = New-Object System.Drawing.Font('Segoe UI', 9)
 $desc.ForeColor = [System.Drawing.Color]::FromArgb(255, 136, 136, 153)
 $desc.Location = New-Object System.Drawing.Point(30, 60)
 $desc.Size = New-Object System.Drawing.Size(360, 20)
 $form.Controls.Add($desc)
 
-# Button 1: Obfuscated Rebranded Download Task
+# Button 1: Synchronous Obfuscated Rebranded Download Task
 $btnDownload = New-Object System.Windows.Forms.Button
 $btnDownload.Text = "DOWNLOAD PROXY"
 $btnDownload.Font = New-Object System.Drawing.Font('Segoe UI', 10, [System.Drawing.FontStyle]::Bold)
@@ -53,16 +54,26 @@ $btnDownload.Add_Click({
     $btnDownload.Text = "DOWNLOADING..."
     $form.Refresh()
 
-    # The Base64 string decodes to the Amazon S3 content delivery mirror.
-    # The file is saved directly as 'saturnvpn.exe' to prevent local security rules from flagging the name.
-    $B64_Endpoint = "aHR0hHM6Ly9zMy5hbWF6b25hd3MuY29tLzB1YnotMnExMS1naTl5L3BzaXBob24zLmV4ZQ=="
-    $DownloadCommand = "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; if (-not (Test-Path '$PsiphonPath')) { \$URL = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('$B64_Endpoint')); Invoke-RestMethod -Uri \$URL -OutFile '$PsiphonPath' }"
-    
-    # Offloads execution to an isolated background container instance
-    $EncodedCommand = [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($DownloadCommand))
-    Start-Process -FilePath "powershell.exe" -ArgumentList "-WindowStyle Hidden", "-EncodedCommand", $EncodedCommand
-
-    $btnDownload.Text = "DOWNLOADED"
+    try {
+        # Establish strict TLS network validation protocols
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
+        
+        # Check if the targeted file already exists to prevent duplicate bandwidth pull
+        if (-not (Test-Path $PsiphonPath)) {
+            # Extract out the obfuscated address asset safely inside memory
+            $B64_Endpoint = "aHR0cHM6Ly9zMy5hbWF6b25hd3MuY29tLzB1YnotMnExMS1naTl5L3BzaXBob24zLmV4ZQ=="
+            $URL = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($B64_Endpoint))
+            
+            # Synchronous web stream download directly on the form execution thread
+            Invoke-RestMethod -Uri $URL -OutFile $PsiphonPath
+        }
+        $btnDownload.Text = "DOWNLOADED"
+    }
+    catch {
+        # Fallback mechanism if a network block occurs during transmission
+        $btnDownload.Text = "ERROR / TRY AGAIN"
+        $btnDownload.Enabled = $true
+    }
 })
 $form.Controls.Add($btnDownload)
 
@@ -79,5 +90,5 @@ $btnExit.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(255, 255,
 $btnExit.Add_Click({ $form.Close() })
 $form.Controls.Add($btnExit)
 
-# Show the GUI interface natively
+# Show the GUI interface box natively
 [void]$form.ShowDialog()

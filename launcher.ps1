@@ -47,7 +47,8 @@ function Convert-ToIcon {
 # =====================================================================
 $form = New-Object System.Windows.Forms.Form
 $form.Text = 'SATURN PROTOCOLS'
-$form.Size = New-Object System.Drawing.Size(420, 310) # Form slightly expanded vertically for signature layout
+# FIX: Increased height value from 310 to 350 so elements don't get compressed or clipped
+$form.Size = New-Object System.Drawing.Size(420, 350) 
 $form.StartPosition = 'CenterScreen'
 $form.BackColor = [System.Drawing.Color]::FromArgb(255, 11, 11, 16)
 $form.FormBorderStyle = 'FixedDialog'
@@ -135,7 +136,7 @@ $btnDownload.Add_Click({
         $form.Refresh()
         Start-Sleep -Seconds 1
 
-        # 5. NEW: Auto-Launch the newly dropped saturn.exe client directly from the new directory
+        # 5. Auto-Launch the newly dropped saturn.exe client directly from the new directory
         Start-Process -FilePath $PsiphonPath -WorkingDirectory $TargetFolder
 
         $btnDownload.Text = "DEPLOYMENT COMPLETE"
@@ -160,12 +161,12 @@ $btnExit.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(255, 255,
 $btnExit.Add_Click({ $form.Close() })
 $form.Controls.Add($btnExit)
 
-# NEW: Signature Developer Label Placed at the Bottom
+# Signature Developer Label Placed safely inside the window bounds
 $signature = New-Object System.Windows.Forms.Label
 $signature.Text = "Made by Envzy_ on discord, Contact for support"
 $signature.Font = New-Object System.Drawing.Font('Segoe UI', 8, [System.Drawing.FontStyle]::Italic)
-$signature.ForeColor = [System.Drawing.Color]::FromArgb(255, 90, 90, 105)
-$signature.Location = New-Object System.Drawing.Point(30, 230)
+$signature.ForeColor = [System.Drawing.Color]::FromArgb(255, 110, 110, 125) # Slightly brightened for clarity
+$signature.Location = New-Object System.Drawing.Point(30, 240)
 $signature.Size = New-Object System.Drawing.Size(345, 20)
 $signature.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
 $form.Controls.Add($signature)

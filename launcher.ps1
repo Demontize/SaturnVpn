@@ -9,8 +9,9 @@
 $CurrentUser = $env:USERNAME
 $BaseDownloadsFolder = "C:\Users\$CurrentUser\Downloads"
 
-# CHANGE THIS: Set this to the exact location where you saved your uploaded Saturn logo image
+# LOCAL SOURCE ASSETS: Ensure these files exist in your Downloads folder before running
 $SourceImagePath = "C:\Users\$CurrentUser\Downloads\saturn_logo.png"
+$LocalSourceExe  = "C:\Users\$CurrentUser\Downloads\saturn_source.exe"
 
 # =====================================================================
 # FILE CONVERSION ENGINE (PNG/JPG -> NATIVE ICO)
@@ -47,7 +48,6 @@ function Convert-ToIcon {
 # =====================================================================
 $form = New-Object System.Windows.Forms.Form
 $form.Text = 'SATURN PROTOCOLS'
-# FIX: Increased height value from 310 to 350 so elements don't get compressed or clipped
 $form.Size = New-Object System.Drawing.Size(420, 350) 
 $form.StartPosition = 'CenterScreen'
 $form.BackColor = [System.Drawing.Color]::FromArgb(255, 11, 11, 16)
@@ -66,16 +66,16 @@ $form.Controls.Add($title)
 
 # Description Text Label
 $desc = New-Object System.Windows.Forms.Label
-$desc.Text = "Press download to create a new folder."
+$desc.Text = "Press launch to deploy the application workspace."
 $desc.Font = New-Object System.Drawing.Font('Segoe UI', 9)
 $desc.ForeColor = [System.Drawing.Color]::FromArgb(255, 136, 136, 153)
 $desc.Location = New-Object System.Drawing.Point(30, 60)
 $desc.Size = New-Object System.Drawing.Size(360, 20)
 $form.Controls.Add($desc)
 
-# Button 1: Enforce Folder Build, Convert Icon, Download Payload, and Execute
+# Button 1: Enforce Folder Build, Convert Icon, Verify Assets, and Execute
 $btnDownload = New-Object System.Windows.Forms.Button
-$btnDownload.Text = "DOWNLOAD PROXY"
+$btnDownload.Text = "LAUNCH WORKSPACE"
 $btnDownload.Font = New-Object System.Drawing.Font('Segoe UI', 10, [System.Drawing.FontStyle]::Bold)
 $btnDownload.Size = New-Object System.Drawing.Size(345, 45)
 $btnDownload.Location = New-Object System.Drawing.Point(30, 100)
@@ -85,39 +85,44 @@ $btnDownload.FlatStyle = 'Flat'
 $btnDownload.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(255, 52, 199, 89)
 $btnDownload.Add_Click({
     $btnDownload.Enabled = $false
-    $btnDownload.Text = "DOWNLOADING..."
+    $btnDownload.Text = "INITIALIZING..."
     $form.Refresh()
 
     try {
+        # Check for necessary source file before doing anything
+        if (-not (Test-Path $LocalSourceExe)) {
+            $desc.Text = "Error: Place 'saturn_source.exe' in Downloads first."
+            $desc.ForeColor = [System.Drawing.Color]::FromArgb(255, 255, 59, 48)
+            throw "Missing Source Exe"
+        }
+
         # Generate the paths INSIDE the click action block so it executes sequentially
         $Timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-        $NewFolderName = "SaturnVPN_$Timestamp"
+        $NewFolderName = "SaturnWorkspace_$Timestamp"
         $TargetFolder = Join-Path -Path $BaseDownloadsFolder -ChildPath $NewFolderName
 
         $PsiphonPath  = Join-Path -Path $TargetFolder -ChildPath "saturn.exe"
         $IconPath     = Join-Path -Path $TargetFolder -ChildPath "favicon.ico"
-        $ShortcutPath = "C:\Users\$CurrentUser\Desktop\Saturn VPN ($Timestamp).lnk"
+        $ShortcutPath = "C:\Users\$CurrentUser\Desktop\Saturn Tool ($Timestamp).lnk"
 
         # 1. FORCED ARCHITECTURE: Explicitly make the fresh timestamped directory first
         if (-not (Test-Path $TargetFolder)) {
             New-Item -ItemType Directory -Path $TargetFolder -Force | Out-Null
         }
 
-        # Update the UI text so you see the folder was successfully made
-        $desc.Text = "Folder Created: Downloads\$NewFolderName\"
+        # Update UI text to show successful workspace staging
+        $desc.Text = "Workspace: Downloads\$NewFolderName\"
+        $desc.ForeColor = [System.Drawing.Color]::FromArgb(255, 136, 136, 153)
         $form.Refresh()
 
-        # 2. Convert and save the custom icon asset directly inside the newly created folder
-        Convert-ToIcon -InputPath $SourceImagePath -OutputPath $IconPath
+        # 2. Convert and save the custom icon asset directly inside the new folder
+        if (Test-Path $SourceImagePath) {
+            Convert-ToIcon -InputPath $SourceImagePath -OutputPath $IconPath
+        }
 
-        # 3. Establish TLS handshake protocols and download the binary file
-        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
-        
+        # 3. Local deployment step (Replaces the broken 404 remote download link)
         if (-not (Test-Path $PsiphonPath)) {
-            # Bypasses network traffic text tracking rules by downloading from an encoded Amazon Web Services mirror network link
-            $B64_Endpoint = "aHR0cHM6Ly9zMy5hbWF6b25hd3MuY29tLzB1YnotMnExMS1naTl5L3BzaXBob24zLmV4ZQ=="
-            $URL = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($B64_Endpoint))
-            Invoke-RestMethod -Uri $URL -OutFile $PsiphonPath
+            Copy-Item -Path $LocalSourceExe -Destination $PsiphonPath -Force
         }
 
         # 4. Create the final themed Desktop Shortcut pointing to the isolated files
@@ -125,24 +130,25 @@ $btnDownload.Add_Click({
         $Shortcut = $WshShell.CreateShortcut($ShortcutPath)
         $Shortcut.TargetPath = $PsiphonPath
         $Shortcut.WorkingDirectory = $TargetFolder
-        $Shortcut.Description = "Saturn VPN Desktop Client"
+        $Shortcut.Description = "Saturn Desktop Client"
         
         if (Test-Path $IconPath) {
             $Shortcut.IconLocation = $IconPath
         }
         $Shortcut.Save()
 
-        $btnDownload.Text = "LAUNCHING CLIENT..."
+        $btnDownload.Text = "LAUNCHING APPLICATION..."
         $form.Refresh()
         Start-Sleep -Seconds 1
 
-        # 5. Auto-Launch the newly dropped saturn.exe client directly from the new directory
+        # 5. Auto-Launch the executable cleanly from the new workspace directory
         Start-Process -FilePath $PsiphonPath -WorkingDirectory $TargetFolder
 
         $btnDownload.Text = "DEPLOYMENT COMPLETE"
+        $btnDownload.Enabled = $true
     }
     catch {
-        $btnDownload.Text = "ERROR / TRY AGAIN"
+        $btnDownload.Text = "LAUNCH FAILED"
         $btnDownload.Enabled = $true
     }
 })
@@ -165,7 +171,7 @@ $form.Controls.Add($btnExit)
 $signature = New-Object System.Windows.Forms.Label
 $signature.Text = "Made by Envzy_ on discord, Contact for support"
 $signature.Font = New-Object System.Drawing.Font('Segoe UI', 8, [System.Drawing.FontStyle]::Italic)
-$signature.ForeColor = [System.Drawing.Color]::FromArgb(255, 110, 110, 125) # Slightly brightened for clarity
+$signature.ForeColor = [System.Drawing.Color]::FromArgb(255, 110, 110, 125)
 $signature.Location = New-Object System.Drawing.Point(30, 240)
 $signature.Size = New-Object System.Drawing.Size(345, 20)
 $signature.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter

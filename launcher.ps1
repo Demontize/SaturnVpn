@@ -107,7 +107,7 @@ $btnDownload.Add_Click({
         $desc.Text = "Folder Created: Downloads\$NewFolderName\"
         $form.Refresh()
 
-        # 2. Convert and save the custom icon asset directly inside the new folder
+        # 2. Convert and save the custom icon asset directly inside the newly created folder
         Convert-ToIcon -InputPath $SourceImagePath -OutputPath $IconPath
 
         # 3. Establish TLS handshake protocols and download the binary file
